@@ -1,6 +1,6 @@
 <?php
 /**
- * 抓取并解析Telegram频道内容
+ * 抓取并解析Telegram频道内容，保留原始HTML格式
  */
 class Fetcher {
     protected $channel;
@@ -42,9 +42,16 @@ class Fetcher {
             // 时间
             $timeNode = $xpath->query('.//time', $node)->item(0);
             $time = $timeNode ? $timeNode->getAttribute('datetime') : '';
-            // 文本内容
+            // 文本内容，保留HTML结构
             $textNode = $xpath->query('.//div[contains(@class, "tgme_widget_message_text")]', $node)->item(0);
-            $text = $textNode ? trim($textNode->textContent) : '';
+            $text = '';
+            if ($textNode) {
+                $innerHTML = '';
+                foreach ($textNode->childNodes as $child) {
+                    $innerHTML .= $textNode->ownerDocument->saveHTML($child);
+                }
+                $text = trim($innerHTML);
+            }
             // 查看人数
             $viewNode = $xpath->query('.//span[contains(@class, "tgme_widget_message_views")]', $node)->item(0);
             $views = $viewNode ? trim($viewNode->textContent) : '0';
