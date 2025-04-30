@@ -10,27 +10,55 @@ body {
     background: #fff;
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     padding: 10px 20px;
+    flex-wrap: nowrap !important;
+    min-width: 0;
+    overflow: hidden;
+    gap: 0.8em;
 }
 .avatar {
     width: 48px;
     height: 48px;
     border-radius: 50%;
     margin-right: 12px;
+    flex-shrink: 0;
+    /* 响应式缩放，后续媒体查询会覆盖 */
+}
+.channel-info {
+    min-width: 0;
+    flex: 1 1 0%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.channel-info h1,
+.channel-info p {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    margin: 0;
+    line-height: 1.2;
 }
 .channel-info h1 {
     font-size: 1.2rem;
-    margin: 0;
 }
 .channel-info p {
-    margin: 2px 0 0;
     color: #666;
     font-size: 0.9rem;
+    margin-top: 2px;
 }
 .back-button {
     margin-left: auto;
     color: #3498db;
     text-decoration: none;
     font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    flex-shrink: 0;
+    margin-left: 0.6em;
 }
 .container {
     max-width: 600px;
@@ -69,18 +97,23 @@ body {
     max-height: 300px;
     border-radius: 8px;
     margin-top: 12px;
-    object-fit: contain; /* 从 cover 改为 contain，避免裁剪 */
+    object-fit: contain;
     transition: opacity 0.5s;
 }
-
-
 .visit-counter {
-    position: absolute;
-    right: 20px;
-    top: 20px;
+    position: static !important;
+    right: auto;
+    top: auto;
     font-size: 16px;
     font-family: inherit;
     color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    flex-shrink: 0;
+    margin-left: 0.6em;
+    padding-left: 0.5em;
 }
 .adaptive-img:hover {
     opacity: 0.85;
@@ -103,4 +136,48 @@ body {
 .tag:hover, .tag.active {
     background-color: #3498db;
     color: #fff;
+}
+
+/* 针对更窄屏幕自适应字体与间距且保持比例，Logo也缩放 */
+@media (max-width: 600px) {
+    .topbar {
+        padding: 8px 6px !important;
+        gap: 0.5em;
+    }
+    .container {
+        max-width: 100%;
+        padding: 0 6px;
+    }
+    .avatar {
+        width: 36px;
+        height: 36px;
+        margin-right: 8px;
+    }
+    .channel-info h1 {
+        font-size: min(1.2rem, 7vw) !important;
+    }
+    .channel-info p {
+        font-size: min(0.9rem, 5vw) !important;
+    }
+    .back-button,
+    .visit-counter {
+        font-size: min(0.95rem, 4vw) !important;
+    }
+}
+/* 超极窄屏（如小手机）再进一步缩小Logo和字体 */
+@media (max-width: 370px) {
+    .topbar {
+        gap: 0.3em;
+    }
+    .avatar {
+        width: 28px;
+        height: 28px;
+        margin-right: 6px;
+    }
+    .channel-info h1 {
+        font-size: min(1rem, 5.5vw) !important;
+    }
+    .channel-info p {
+        font-size: min(0.75rem, 4vw) !important;
+    }
 }
