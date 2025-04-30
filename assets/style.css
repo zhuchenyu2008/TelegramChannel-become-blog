@@ -164,7 +164,7 @@ body {
         font-size: min(0.95rem, 4vw) !important;
     }
 }
-/* 超极窄屏（如小手机）再进一步缩小Logo和字体 */
+/* 超极窄屏（如小手机）再进一步缩小Logo和字体. */
 @media (max-width: 370px) {
     .topbar {
         gap: 0.3em;
