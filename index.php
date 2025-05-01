@@ -78,9 +78,14 @@ file_put_contents($statFile, $visits);
             </div>
             <div class="content">
                 <div class="tg-text"><?php echo add_external_link_class($post['text']); ?></div>
-                <?php if ($post['img']): ?>
-                    <img src="<?php echo htmlspecialchars($post['img']); ?>" alt="" class="adaptive-img">
+                <?php if (!empty($post['imgs'])): ?>
+                    <div class="image-gallery">
+                        <?php foreach ($post['imgs'] as $idx => $img): ?>
+                            <img src="<?php echo htmlspecialchars($img); ?>" alt="" class="adaptive-img" data-idx="<?php echo $idx; ?>">
+                        <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
+
             </div>
             <div class="tags">
                 <?php foreach ($tags[1] as $tag): ?>
@@ -90,6 +95,20 @@ file_put_contents($statFile, $visits);
         </div>
     <?php endforeach; ?>
 </div>
+
+<!-- 灯箱大图组件 -->
+<div id="lightbox" class="lightbox" style="display:none;">
+    <div class="lightbox-backdrop"></div>
+    <div class="lightbox-content">
+        <img src="" alt="" id="lightbox-img">
+        <button class="lightbox-close">&times;</button>
+        <button class="lightbox-prev">&#8592;</button>
+        <button class="lightbox-next">&#8594;</button>
+        <div class="lightbox-index"></div>
+    </div>
+</div>
+
+
 <script src="assets/script.js"></script>
 </body>
 </html>

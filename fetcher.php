@@ -56,22 +56,28 @@ class Fetcher {
             $viewNode = $xpath->query('.//span[contains(@class, "tgme_widget_message_views")]', $node)->item(0);
             $views = $viewNode ? trim($viewNode->textContent) : '0';
             // 图片
-            $imgWrap = $xpath->query('.//a[contains(@class, "tgme_widget_message_photo_wrap")]', $node)->item(0);
-            $img = '';
-            if ($imgWrap) {
+            
+            // 图片，改为提取所有图片
+            $imgWraps = $xpath->query('.//a[contains(@class, "tgme_widget_message_photo_wrap")]', $node);
+            $imgs = [];
+            foreach ($imgWraps as $imgWrap) {
                 $style = $imgWrap->getAttribute('style');
                 if (preg_match('/url\(([^)]+)\)/', $style, $m)) {
                     $rawUrl = trim($m[1], "'\"");
                     $img = strpos($rawUrl, '//') === 0 ? 'https:' . $rawUrl : $rawUrl;
+                    $imgs[] = $img;
                 }
             }
-
+            
             $messages[] = [
                 'time' => $time,
                 'text' => $text,
                 'views'=> $views,
-                'img'  => $img,
+                'imgs' => $imgs,
             ];
+
+
+            
         }
 
         $data = [

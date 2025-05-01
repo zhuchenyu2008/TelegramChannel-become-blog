@@ -270,8 +270,178 @@ body {
     font-size: 1em;
 }
 
+/* 多图轮播样式 */
+.image-gallery {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+.image-gallery .adaptive-img {
+    width: calc(33.33% - 6px);
+    max-width: 180px;
+    max-height: 110px;
+    border-radius: 7px;
+    cursor: pointer;
+    object-fit: cover;
+    transition: box-shadow 0.2s, transform 0.3s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.image-gallery .adaptive-img:hover {
+    box-shadow: 0 6px 24px rgba(52,152,219,0.12), 0 2px 8px rgba(0,0,0,0.12);
+    transform: scale(1.04) translateY(-2px);
+    opacity: 0.93;
+}
 
+/* 灯箱样式 */
+.lightbox {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0; top: 0; right: 0; bottom: 0;
+    background: rgba(10, 15, 25, 0.88);
+    justify-content: center;
+    align-items: center;
+    animation: none;
+    transition: opacity 0.3s;
+    opacity: 0;
+    pointer-events: none;
+}
+.lightbox.show {
+    display: flex;
+    opacity: 1;
+    pointer-events: auto;
+}
+.lightbox-backdrop {
+    position: absolute;
+    left:0;top:0;right:0;bottom:0;
+    background: transparent;
+}
+.lightbox-content {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.22);
+    padding: 22px 22px 18px 22px;
+    min-width: 260px;
+    min-height: 180px;
+    max-width: 96vw;
+    max-height: 88vh;
+    animation: lightboxPop 0.35s cubic-bezier(.3,.7,.4,1);
+}
+@keyframes lightboxPop {
+    from { transform: scale(0.94) translateY(32px); opacity: 0; }
+    to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+.lightbox-content img {
+    max-width: 72vw;
+    max-height: 68vh;
+    border-radius: 10px;
+    box-shadow: 0 2px 14px rgba(0,0,0,0.17);
+    background: #fff;
+    margin-bottom: 14px;
+    transition: opacity 0.33s;
+    opacity: 1;
+    display: block;
+}
+.lightbox-content img.fade-in {
+    animation: fadeInImage 0.32s;
+}
+@keyframes fadeInImage {
+    from { opacity: 0; transform: scale(0.96);}
+    to   { opacity: 1; transform: scale(1);}
+}
 
+/* 灯箱按钮样式：始终居中 */
+.lightbox-close,
+.lightbox-prev,
+.lightbox-next {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.33);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    z-index: 11;
+    transition: background 0.18s;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 2em;
+    line-height: 1;
+}
 
+.lightbox-close {
+    top: 16px;
+    right: 16px;
+    font-size: 2em;
+}
 
+.lightbox-prev,
+.lightbox-next {
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.28);
+    font-size: 2.2em;
+}
 
+.lightbox-prev {
+    left: -54px;
+}
+
+.lightbox-next {
+    right: -54px;
+}
+
+.lightbox-index {
+    color: #fff;
+    font-size: 1.1em;
+    margin-top: 4px;
+    letter-spacing: 2px;
+}
+
+@media (max-width: 600px) {
+    .lightbox-content {
+        padding: 10px 4px 8px 4px;
+        min-width: 140px;
+        min-height: 60px;
+    }
+    .lightbox-content img {
+        max-width: 98vw;
+        max-height: 60vh;
+    }
+    .image-gallery .adaptive-img {
+        width: calc(50% - 6px);
+        max-width: 99vw;
+        max-height: 120px;
+    }
+    .lightbox-close,
+    .lightbox-prev,
+    .lightbox-next {
+        width: 34px;
+        height: 34px;
+        font-size: 1.3em;
+    }
+    .lightbox-close {
+        top: 7px;
+        right: 7px;
+        font-size: 1.3em;
+    }
+    .lightbox-prev,
+    .lightbox-next {
+        font-size: 1.5em;
+    }
+    .lightbox-prev {
+        left: -36px;
+    }
+    .lightbox-next {
+        right: -36px;
+    }
+}

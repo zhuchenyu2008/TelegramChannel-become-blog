@@ -71,3 +71,68 @@ document.querySelectorAll('.content').forEach(contentEl => {
         });
     });
 });
+// --------- 图片灯箱和多图浏览 ----------
+(function(){
+    // 灯箱元素
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+    const lightboxClose = lightbox.querySelector('.lightbox-close');
+    const lightboxPrev = lightbox.querySelector('.lightbox-prev');
+    const lightboxNext = lightbox.querySelector('.lightbox-next');
+    const lightboxBackdrop = lightbox.querySelector('.lightbox-backdrop');
+    const lightboxIndex = lightbox.querySelector('.lightbox-index');
+    let currentSet = [];
+    let currentIdx = 0;
+
+    // 所有帖子图片监听
+    document.querySelectorAll('.image-gallery').forEach(gallery => {
+        const imgs = Array.from(gallery.querySelectorAll('img'));
+        imgs.forEach((img, idx) => {
+            img.addEventListener('click', function(e){
+                e.stopPropagation();
+                currentSet = imgs.map(i=>i.src);
+                currentIdx = idx;
+                showLightbox();
+            });
+        });
+    });
+
+    function showLightbox() {
+        updateLightbox();
+        lightbox.style.display = '';
+        setTimeout(()=>lightbox.classList.add('show'), 10);
+        document.body.style.overflow = 'hidden';
+    }
+    function hideLightbox() {
+        lightbox.classList.remove('show');
+        setTimeout(()=>{lightbox.style.display = 'none'; document.body.style.overflow='';}, 300);
+    }
+    function updateLightbox() {
+        lightboxImg.classList.remove('fade-in');
+        setTimeout(()=>{
+            lightboxImg.src = currentSet[currentIdx];
+            lightboxImg.classList.add('fade-in');
+            lightboxIndex.textContent = (currentIdx+1) + ' / ' + currentSet.length;
+        }, 10);
+    }
+    function prevImg(){
+        currentIdx = (currentIdx - 1 + currentSet.length) % currentSet.length;
+        updateLightbox();
+    }
+    function nextImg(){
+        currentIdx = (currentIdx + 1) % currentSet.length;
+        updateLightbox();
+    }
+    lightboxClose.onclick = hideLightbox;
+    lightboxBackdrop.onclick = hideLightbox;
+    lightboxPrev.onclick = prevImg;
+    lightboxNext.onclick = nextImg;
+
+    // 键盘支持
+    document.addEventListener('keydown', function(e){
+        if(lightbox.style.display === 'none') return;
+        if(e.key === 'Escape') hideLightbox();
+        if(e.key === 'ArrowLeft') prevImg();
+        if(e.key === 'ArrowRight') nextImg();
+    });
+})();
