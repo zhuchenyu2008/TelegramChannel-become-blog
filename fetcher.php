@@ -87,10 +87,12 @@ class Fetcher {
 
             $newMessagesOnPage = 0;
             $lastProcessedMessageIdOnPage = null;
+            $currentPageMessages = [];
 
+            // 1. Collect Page Messages
             foreach ($messageNodes as $node) {
-                $messageLinkNode = $xpath->query('.//a[contains(@class, "tgme_widget_message_date")]', $node)->item(0);
                 $messageId = null;
+                $messageLinkNode = $xpath->query('.//a[contains(@class, "tgme_widget_message_date")]', $node)->item(0);
                 if ($messageLinkNode) {
                     $linkHref = $messageLinkNode->getAttribute('href');
                     if (preg_match('/\/(\d+)$/', $linkHref, $matches)) {
@@ -98,7 +100,6 @@ class Fetcher {
                     }
                 }
                 
-                // Fallback or alternative: Try to get data-post attribute from the message div itself
                 if (!$messageId) {
                     $messageDataPost = $node->getAttribute('data-post');
                     if ($messageDataPost && strpos($messageDataPost, '/') !== false) {
@@ -106,11 +107,7 @@ class Fetcher {
                     }
                 }
 
-
-                if ($messageId && !in_array($messageId, $processedMessageIds)) {
-                    $processedMessageIds[] = $messageId;
-                    $newMessagesOnPage++;
-
+                if ($messageId) {
                     $timeNode = $xpath->query('.//time', $node)->item(0);
                     $time = $timeNode ? $timeNode->getAttribute('datetime') : '';
                     
@@ -137,23 +134,34 @@ class Fetcher {
                             $imgs[] = $img;
                         }
                     }
-                    
-                    $allPosts[] = [
-                        'id' => $messageId, // Store ID for reference
+                    $currentPageMessages[] = [
+                        'id' => $messageId,
                         'time' => $time,
                         'text' => $text,
                         'views'=> $views,
                         'imgs' => $imgs,
                     ];
-                    $lastProcessedMessageIdOnPage = $messageId;
-                } elseif ($messageId && in_array($messageId, $processedMessageIds)) {
-                    // This message was already processed, likely from an overlapping page load.
-                    // Continue to check other messages on this page.
                 }
-                 // If no messageId, it's an issue with parsing that specific message, skip it.
             }
 
-            if ($newMessagesOnPage === 0 && $messageNodes->length > 0) {
+            // 2. Sort Page Messages (descending by ID, newer first)
+            if (!empty($currentPageMessages)) {
+                usort($currentPageMessages, function($a, $b) {
+                    return $b['id'] <=> $a['id']; // PHP 7+ spaceship operator
+                });
+            }
+            
+            // 3. Process Sorted Page Messages
+            foreach ($currentPageMessages as $messageData) {
+                if (!in_array($messageData['id'], $processedMessageIds)) {
+                    $processedMessageIds[] = $messageData['id'];
+                    $allPosts[] = $messageData; // Add the full pre-prepared message data
+                    $newMessagesOnPage++;
+                    $lastProcessedMessageIdOnPage = $messageData['id']; // This will be the oldest ID in this batch
+                }
+            }
+
+            if ($newMessagesOnPage === 0 && !empty($currentPageMessages)) { // Changed condition slightly
                 // Fetched a page, but all messages on it were already processed.
                 // This means we've reached the end of unique new content.
                 break;
