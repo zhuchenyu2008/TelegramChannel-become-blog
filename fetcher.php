@@ -170,7 +170,7 @@ class Fetcher {
 
         $data = [
             'description' => $description,
-            'messages' => array_reverse($allPosts) // Reverse to keep chronological order (newest first in t.me/s)
+            'messages' => $allPosts // Keep the natural order: newest posts (first page) first
         ];
 
         file_put_contents($cacheFile, json_encode($data));
