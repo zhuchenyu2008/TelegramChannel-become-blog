@@ -42,14 +42,48 @@ document.querySelectorAll('.content').forEach(contentEl => {
         preview.href = link.href;
         preview.target = '_blank';
         preview.rel = 'noopener noreferrer';
-        preview.innerHTML = `
-            <img class="link-preview-thumb" src="https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(link.href)}" alt="icon">
-            <div class="link-preview-content">
-                <div class="link-preview-title">${link.href}</div>
-                <div class="link-preview-desc">正在加载预览…</div>
-                <div class="link-preview-domain">${(new URL(link.href)).hostname}</div>
-            </div>
-        `;
+
+        // Clear any existing content in preview (though it's a new element, good practice)
+        preview.innerHTML = ''; 
+
+        // Create image element
+        const img = document.createElement('img');
+        img.className = 'link-preview-thumb';
+        img.src = `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(link.href)}`;
+        img.alt = 'icon';
+
+        // Create content container
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'link-preview-content';
+
+        // Create title element
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'link-preview-title';
+        titleDiv.textContent = link.href; // Use textContent
+
+        // Create description element
+        const descDiv = document.createElement('div');
+        descDiv.className = 'link-preview-desc';
+        descDiv.textContent = '正在加载预览…';
+
+        // Create domain element
+        const domainDiv = document.createElement('div');
+        domainDiv.className = 'link-preview-domain';
+        // Make sure link.href is a valid URL before trying to get hostname
+        try {
+            domainDiv.textContent = (new URL(link.href)).hostname; // Use textContent
+        } catch (e) {
+            domainDiv.textContent = link.href; // Fallback if URL parsing fails
+        }
+        
+        // Append elements
+        contentDiv.appendChild(titleDiv);
+        contentDiv.appendChild(descDiv);
+        contentDiv.appendChild(domainDiv);
+
+        preview.appendChild(img);
+        preview.appendChild(contentDiv);
+        
         link.parentNode.insertBefore(preview, link.nextSibling);
         fetch(`https://jsonlink.io/api/extract?url=${encodeURIComponent(link.href)}`)
         .then(res => res.json())

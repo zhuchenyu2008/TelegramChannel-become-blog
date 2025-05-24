@@ -32,9 +32,28 @@ require __DIR__ . '/fetcher.php';
 
 $fetcher = new Fetcher($config);
 $data = $fetcher->getPosts();
-$posts = $data['messages'];
+$all_posts = $data['messages']; // Renamed to avoid confusion
 $description = $data['description'];
 $channelName = $config['channel'];
+
+// --- Pagination Logic ---
+$posts_per_page = $config['posts_per_page'] ?? 20; // Read from config or default to 20
+$total_posts = count($all_posts);
+$total_pages = ceil($total_posts / $posts_per_page);
+if ($total_pages == 0) $total_pages = 1; // Ensure at least 1 page even if no posts
+
+$current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($current_page < 1) {
+    $current_page = 1;
+}
+if ($current_page > $total_pages) {
+    $current_page = $total_pages;
+}
+
+$offset = ($current_page - 1) * $posts_per_page;
+$posts_on_page = array_slice($all_posts, $offset, $posts_per_page);
+// --- End Pagination Logic ---
+
 // $tagFilter = $_GET['tag'] ?? null; // 不再需要后端筛选
 
 // 简单访客统计（按天）
@@ -66,9 +85,12 @@ file_put_contents($statFile, $visits);
     </div>
 </div>
 <div class="container">
-    <?php foreach ($posts as $post): ?>
-        <?php
-            preg_match_all('/#(\w+)/u', $post['text'], $tags);
+    <?php if (empty($posts_on_page)): ?>
+        <p class="no-posts">No posts to display on this page.</p>
+    <?php else: ?>
+        <?php foreach ($posts_on_page as $post): ?>
+            <?php
+                preg_match_all('/#(\w+)/u', $post['text'], $tags);
             // 不再用后端筛选
         ?>
         <div class="post">
@@ -93,8 +115,86 @@ file_put_contents($statFile, $visits);
                 <?php endforeach; ?>
             </div>
         </div>
-    <?php endforeach; ?>
+        <?php endforeach; ?>
+    <?php endif; ?>
 </div>
+
+<!-- Pagination Controls -->
+<div class="pagination">
+    <?php if ($total_pages > 1): ?>
+        <?php // Previous Page Link ?>
+        <?php if ($current_page > 1): ?>
+            <a href="?page=<?php echo $current_page - 1; ?>">« Previous</a>
+        <?php else: ?>
+            <span class="disabled">« Previous</span>
+        <?php endif; ?>
+
+        <?php // Page Number Links
+        $show_ellipsis_start = false;
+        $show_ellipsis_end = false;
+        $visible_pages_around_current = 2; // How many pages to show before and after current
+
+        if ($total_pages <= (1 + ($visible_pages_around_current * 2) + 2 + 2)) { // First + AroundCurrent*2 + Current + Ellipses*2
+            // Show all pages if total is small enough
+            $start_page = 1;
+            $end_page = $total_pages;
+        } else {
+            // Determine if ellipses are needed
+            if ($current_page > $visible_pages_around_current + 2) {
+                $show_ellipsis_start = true;
+            }
+            if ($current_page < $total_pages - ($visible_pages_around_current + 1)) {
+                $show_ellipsis_end = true;
+            }
+
+            if ($show_ellipsis_start && $show_ellipsis_end) {
+                $start_page = $current_page - $visible_pages_around_current;
+                $end_page = $current_page + $visible_pages_around_current;
+            } elseif ($show_ellipsis_start) { // Ellipsis at start only, current page is near the end
+                $start_page = $total_pages - (2 * $visible_pages_around_current) -1; // Show last few pages
+                $end_page = $total_pages;
+            } elseif ($show_ellipsis_end) { // Ellipsis at end only, current page is near the start
+                $start_page = 1;
+                $end_page = 1 + (2 * $visible_pages_around_current) +1; // Show first few pages
+            } else { // Should not happen with the main if, but as fallback
+                $start_page = 1;
+                $end_page = $total_pages;
+            }
+        }
+
+        // Always show page 1
+        if ($start_page > 1): ?>
+            <a href="?page=1">1</a>
+            <?php if ($show_ellipsis_start && $start_page > 2): ?>
+                <span class="ellipsis">...</span>
+            <?php endif; ?>
+        <?php endif;
+
+        for ($i = max(1, $start_page); $i <= min($total_pages, $end_page); $i++): ?>
+            <?php if ($i == $current_page): ?>
+                <span class="active"><?php echo $i; ?></span>
+            <?php else: ?>
+                <a href="?page=<?php echo $i; ?>"><?php echo $i; ?></a>
+            <?php endif; ?>
+        <?php endfor;
+
+        // Always show last page
+        if ($end_page < $total_pages): ?>
+            <?php if ($show_ellipsis_end && $end_page < $total_pages -1 ): ?>
+                <span class="ellipsis">...</span>
+            <?php endif; ?>
+            <a href="?page=<?php echo $total_pages; ?>"><?php echo $total_pages; ?></a>
+        <?php endif; ?>
+
+        <?php // Next Page Link ?>
+        <?php if ($current_page < $total_pages): ?>
+            <a href="?page=<?php echo $current_page + 1; ?>">Next »</a>
+        <?php else: ?>
+            <span class="disabled">Next »</span>
+        <?php endif; ?>
+    <?php endif; ?>
+</div>
+<!-- End Pagination Controls -->
 
 <!-- 灯箱大图组件 -->
 <div id="lightbox" class="lightbox" style="display:none;">
