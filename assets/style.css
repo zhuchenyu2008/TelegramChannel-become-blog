@@ -455,11 +455,11 @@ body {
 }
 
 .lightbox-prev {
-    left: -54px;
+    left: 15px; /* Position arrow inside content box */
 }
 
 .lightbox-next {
-    right: -54px;
+    right: 15px; /* Position arrow inside content box */
 }
 
 .lightbox-index {
@@ -500,10 +500,9 @@ body {
     .lightbox-next {
         font-size: 1.5em;
     }
-    .lightbox-prev {
-        left: -36px;
-    }
-    .lightbox-next {
-        right: -36px;
-    }
+    /* Removed mobile-specific negative horizontal positioning for arrows.
+       The new desktop rules (left: 15px, right: 15px) will apply.
+       Vertical centering is handled by the main rule for .lightbox-prev, .lightbox-next. */
+    /* .lightbox-prev { left: 5px; } /* Example if finer mobile adjustment was needed */
+    /* .lightbox-next { right: 5px; } /* Example if finer mobile adjustment was needed */
 }
