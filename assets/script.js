@@ -147,6 +147,24 @@ document.querySelectorAll('.content').forEach(contentEl => {
             lightboxImg.src = currentSet[currentIdx];
             lightboxImg.classList.add('fade-in');
             lightboxIndex.textContent = (currentIdx+1) + ' / ' + currentSet.length;
+
+            // Conditionally show/hide navigation arrows
+            if (currentSet.length <= 1) {
+                lightboxPrev.style.display = 'none';
+                lightboxNext.style.display = 'none';
+            } else {
+                if (currentIdx === 0) {
+                    lightboxPrev.style.display = 'none';
+                } else {
+                    lightboxPrev.style.display = 'flex';
+                }
+
+                if (currentIdx === currentSet.length - 1) {
+                    lightboxNext.style.display = 'none';
+                } else {
+                    lightboxNext.style.display = 'flex';
+                }
+            }
         }, 10);
     }
     function prevImg(){
