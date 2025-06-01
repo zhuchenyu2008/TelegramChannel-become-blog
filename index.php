@@ -35,10 +35,36 @@ $data = $fetcher->getPosts();
 $all_posts = $data['messages']; // Renamed to avoid confusion
 $description = $data['description'];
 $channelName = $config['channel'];
+$page_title = $channelName . " - 博客"; // Default page title
+
+// --- Tag Filtering Logic ---
+$tag_filter = null;
+if (isset($_GET['tag']) && !empty(trim($_GET['tag']))) {
+    $tag_filter = trim($_GET['tag']);
+    $page_title .= " #$tag_filter"; // Append tag to title
+}
+
+$posts_for_pagination = $all_posts; // Default to all posts
+
+if ($tag_filter) {
+    $tag_filter_max_posts_to_scan = $config['tag_filter_max_posts_to_scan'] ?? 400; // Load from config
+    $posts_to_scan = array_slice($all_posts, 0, $tag_filter_max_posts_to_scan);
+    $filtered_posts = [];
+    foreach ($posts_to_scan as $post) {
+        if (isset($post['text'])) {
+            preg_match_all('/#(\w+)/u', $post['text'], $tags_matches);
+            if (!empty($tags_matches[1]) && in_array($tag_filter, $tags_matches[1])) {
+                $filtered_posts[] = $post;
+            }
+        }
+    }
+    $posts_for_pagination = $filtered_posts;
+}
+// --- End Tag Filtering Logic ---
 
 // --- Pagination Logic ---
 $posts_per_page = $config['posts_per_page'] ?? 20; // Read from config or default to 20
-$total_posts = count($all_posts);
+$total_posts = count($posts_for_pagination);
 $total_pages = ceil($total_posts / $posts_per_page);
 if ($total_pages == 0) $total_pages = 1; // Ensure at least 1 page even if no posts
 
@@ -51,10 +77,10 @@ if ($current_page > $total_pages) {
 }
 
 $offset = ($current_page - 1) * $posts_per_page;
-$posts_on_page = array_slice($all_posts, $offset, $posts_per_page);
+$posts_on_page = array_slice($posts_for_pagination, $offset, $posts_per_page);
 // --- End Pagination Logic ---
 
-// $tagFilter = $_GET['tag'] ?? null; // 不再需要后端筛选
+// $tagFilter = $_GET['tag'] ?? null; // No longer needed with backend filtering
 
 // 简单访客统计（按天）
 $today = date('Ymd');
@@ -68,7 +94,7 @@ file_put_contents($statFile, $visits);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($channelName); ?> - 博客</title>
+    <title><?php echo htmlspecialchars($page_title); ?></title>
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -77,9 +103,12 @@ file_put_contents($statFile, $visits);
     <div class="channel-info">
         <a href="/" style="text-decoration: none; color: inherit;"><h1>@<?php echo htmlspecialchars($channelName); ?></h1></a>
         <p><?php echo htmlspecialchars($description); ?></p>
+        <?php if ($tag_filter): ?>
+            <p class="current-filter">Filtering by tag: <strong>#<?php echo htmlspecialchars($tag_filter); ?></strong> <a href="?" class="clear-filter">(Clear)</a></p>
+        <?php endif; ?>
     </div>
-    <!-- 改为始终输出返回按钮，但初始隐藏 -->
-    <a id="backBtn" href="#" class="back-button" style="display:none;">← 返回</a>
+    <!-- Back button: displayed when a filter is active, links to clear the filter -->
+    <a id="backBtn" href="?" class="back-button" style="<?php echo $tag_filter ? 'display:inline-block;' : 'display:none;'; ?>">← 返回首页</a>
     <div class="visit-counter">
         Number of visitors: <strong><?php echo $visits; ?></strong>
     </div>
@@ -122,9 +151,15 @@ file_put_contents($statFile, $visits);
 <!-- Pagination Controls -->
 <div class="pagination">
     <?php if ($total_pages > 1): ?>
+        <?php
+        $base_query = '';
+        if ($tag_filter) {
+            $base_query .= 'tag=' . urlencode($tag_filter) . '&';
+        }
+        ?>
         <?php // Previous Page Link ?>
         <?php if ($current_page > 1): ?>
-            <a href="?page=<?php echo $current_page - 1; ?>">« Previous</a>
+            <a href="?<?php echo $base_query; ?>page=<?php echo $current_page - 1; ?>">« Previous</a>
         <?php else: ?>
             <span class="disabled">« Previous</span>
         <?php endif; ?>
@@ -164,7 +199,7 @@ file_put_contents($statFile, $visits);
 
         // Always show page 1
         if ($start_page > 1): ?>
-            <a href="?page=1">1</a>
+            <a href="?<?php echo $base_query; ?>page=1">1</a>
             <?php if ($show_ellipsis_start && $start_page > 2): ?>
                 <span class="ellipsis">...</span>
             <?php endif; ?>
@@ -174,7 +209,7 @@ file_put_contents($statFile, $visits);
             <?php if ($i == $current_page): ?>
                 <span class="active"><?php echo $i; ?></span>
             <?php else: ?>
-                <a href="?page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                <a href="?<?php echo $base_query; ?>page=<?php echo $i; ?>"><?php echo $i; ?></a>
             <?php endif; ?>
         <?php endfor;
 
@@ -183,12 +218,12 @@ file_put_contents($statFile, $visits);
             <?php if ($show_ellipsis_end && $end_page < $total_pages -1 ): ?>
                 <span class="ellipsis">...</span>
             <?php endif; ?>
-            <a href="?page=<?php echo $total_pages; ?>"><?php echo $total_pages; ?></a>
+            <a href="?<?php echo $base_query; ?>page=<?php echo $total_pages; ?>"><?php echo $total_pages; ?></a>
         <?php endif; ?>
 
         <?php // Next Page Link ?>
         <?php if ($current_page < $total_pages): ?>
-            <a href="?page=<?php echo $current_page + 1; ?>">Next »</a>
+            <a href="?<?php echo $base_query; ?>page=<?php echo $current_page + 1; ?>">Next »</a>
         <?php else: ?>
             <span class="disabled">Next »</span>
         <?php endif; ?>
