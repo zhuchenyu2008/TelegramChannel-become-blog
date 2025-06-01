@@ -104,7 +104,7 @@ file_put_contents($statFile, $visits);
         <a href="/" style="text-decoration: none; color: inherit;"><h1>@<?php echo htmlspecialchars($channelName); ?></h1></a>
         <p><?php echo htmlspecialchars($description); ?></p>
         <?php if ($tag_filter): ?>
-            <p class="current-filter">Filtering by tag: <strong>#<?php echo htmlspecialchars($tag_filter); ?></strong> <a href="?" class="clear-filter">(Clear)</a></p>
+            <p class="current-filter">Filtering by tag: <strong>#<?php echo htmlspecialchars($tag_filter); ?></strong></p>
         <?php endif; ?>
     </div>
     <!-- Back button: displayed when a filter is active, links to clear the filter -->
