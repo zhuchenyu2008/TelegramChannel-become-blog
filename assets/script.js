@@ -1,35 +1,33 @@
-// 标签筛选平滑隐藏 + 返回按钮
-const backBtn = document.getElementById('backBtn');
+// 标签点击行为 - 跳转到后端筛选
 document.querySelectorAll('.tag').forEach(tag => {
     tag.addEventListener('click', e => {
         e.preventDefault();
-        const t = new URL(tag.href, window.location.href).searchParams.get('tag');
-        document.querySelectorAll('.post').forEach(post => {
-            // 只显示含有这个tag的post
-            let hasTag = false;
-            post.querySelectorAll('.tag').forEach(a => {
-                if (a.textContent === '#' + t) hasTag = true;
-            });
-            post.style.display = hasTag ? '' : 'none';
-        });
-        // 显示返回按钮
-        backBtn.style.display = '';
-        // 激活当前标签样式
-        document.querySelectorAll('.tag').forEach(a => a.classList.remove('active'));
-        tag.classList.add('active');
+        // Extract tag name from href (safer than textContent if there are other characters)
+        let tagName = '';
+        try {
+            const url = new URL(tag.href, window.location.origin);
+            tagName = url.searchParams.get('tag');
+        } catch (error) {
+            console.error("Error parsing tag href:", error);
+            // Fallback or alternative if href is not a full URL or doesn't have ?tag=
+            // For example, if href is just "#someTag" or textContent is "#someTag"
+            const text = tag.textContent.trim();
+            if (text.startsWith('#')) {
+                tagName = text.substring(1);
+            }
+        }
+
+        if (tagName) {
+            window.location.href = `index.php?tag=${encodeURIComponent(tagName)}`;
+        } else {
+            // Fallback to root if tag name couldn't be extracted (should not happen with current HTML)
+            window.location.href = 'index.php';
+        }
     });
 });
-backBtn.addEventListener('click', e => {
-    e.preventDefault();
-    // 显示所有帖子
-    document.querySelectorAll('.post').forEach(post => {
-        post.style.display = '';
-    });
-    // 隐藏返回按钮
-    backBtn.style.display = 'none';
-    // 取消所有激活标签
-    document.querySelectorAll('.tag').forEach(a => a.classList.remove('active'));
-});
+
+// Client-side filtering and back button logic previously here are now removed,
+// as filtering is handled by the backend and navigation is via direct links.
 
 // --- 生成链接预览框 ---
 document.querySelectorAll('.content').forEach(contentEl => {
