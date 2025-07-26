@@ -29,6 +29,31 @@
 └── cache/            # 缓存与统计文件目录（需可写）
 ```
 
+## 使用 Docker 运行
+
+1.  **构建 Docker 镜像:**
+
+    ```bash
+    docker-compose build
+    ```
+
+2.  **运行应用:**
+
+    ```bash
+    docker-compose up -d
+    ```
+
+    应用将在 `http://localhost:8080` 上可用。
+
+### 配置
+
+您可以通过在 `docker-compose.yml` 文件中设置以下环境变量来配置应用程序：
+
+*   `CHANNEL`: Telegram 频道的名称 (不含 `@`)。
+*   `CACHE_TTL`: 缓存的 TTL (以秒为单位)。
+*   `POSTS_PER_PAGE`: 每页显示的文章数。
+*   `TAG_FILTER_MAX_POSTS_TO_SCAN`: 用于扫描标签的最大文章数。
+
 ## 安装与部署
 
 1. **环境要求**
