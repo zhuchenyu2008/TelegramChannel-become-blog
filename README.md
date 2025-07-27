@@ -8,6 +8,43 @@
 
 项目会自动抓取指定频道的内容，展示为网页博客形式，支持标签分类、外链预览、图片多图浏览和每日访客统计，界面简洁美观，适合自建频道内容归档或展示。
 
+## Docker 部署
+
+本项目支持使用 Docker 进行快速部署。
+
+### 部署步骤
+
+1.  **克隆项目**
+
+    ```bash
+    git clone https://github.com/your-username/your-repo-name.git
+    cd your-repo-name
+    ```
+
+2.  **构建并启动 Docker 容器**
+
+    ```bash
+    docker-compose up -d --build
+    ```
+
+3.  **访问博客**
+
+    在浏览器中打开 `http://localhost:8080` 即可访问您的博客。
+
+### 自定义配置
+
+您可以根据需要修改 `config.php` 文件来自定义您的博客：
+
+*   `channel`: 您的 Telegram 频道名称（不含 `@`）。
+*   `cache_ttl`: 缓存过期时间（以秒为单位）。
+*   `posts_per_page`: 每页显示的文章数。
+
+修改配置后，您需要重新构建 Docker 镜像才能使更改生效：
+
+```bash
+docker-compose up -d --build
+```
+
 ## 功能特色
 
 - **自动抓取 Telegram 频道内容**（无需Bot，无需API Key）
@@ -29,32 +66,7 @@
 └── cache/            # 缓存与统计文件目录（需可写）
 ```
 
-## 使用 Docker 运行
-
-1.  **构建 Docker 镜像:**
-
-    ```bash
-    docker-compose build
-    ```
-
-2.  **运行应用:**
-
-    ```bash
-    docker-compose up -d
-    ```
-
-    应用将在 `http://localhost:8080` 上可用。
-
-### 配置
-
-您可以通过在 `docker-compose.yml` 文件中设置以下环境变量来配置应用程序：
-
-*   `CHANNEL`: Telegram 频道的名称 (不含 `@`)。
-*   `CACHE_TTL`: 缓存的 TTL (以秒为单位)。
-*   `POSTS_PER_PAGE`: 每页显示的文章数。
-*   `TAG_FILTER_MAX_POSTS_TO_SCAN`: 用于扫描标签的最大文章数。
-
-## 安装与部署
+## 手动安装与部署
 
 1. **环境要求**
 
@@ -134,8 +146,3 @@
 **如有问题欢迎提issue或联系作者。**
 
 ---
-
-
-
-
-

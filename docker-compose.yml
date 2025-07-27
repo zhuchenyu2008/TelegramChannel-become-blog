@@ -1,14 +1,10 @@
 version: '3.8'
-
 services:
-  app:
+  web:
     build: .
     ports:
       - "8080:80"
     volumes:
       - ./cache:/var/www/html/cache
-    environment:
-      - CHANNEL=biggestseahome
-      - CACHE_TTL=300
-      - POSTS_PER_PAGE=20
-      - TAG_FILTER_MAX_POSTS_TO_SCAN=400
+    command: >
+      bash -c "chown -R www-data:www-data /var/www/html/cache && apache2-foreground"
