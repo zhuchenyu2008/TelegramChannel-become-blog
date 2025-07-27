@@ -17,10 +17,10 @@
 1.  **克隆项目**
 
     ```bash
-    git clone https://github.com/your-username/your-repo-name.git
-    cd your-repo-name
+    git clone https://github.com/zhuchenyu2008/TelegramChannel-become-blog.git
+    cd TelegramChannel-become-blog
     ```
-
+    自定义配置请看下方自定义配置
 2.  **构建并启动 Docker 容器**
 
     ```bash
