@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    volumes:
+      - ./cache:/var/www/html/cache
+    command: >
+      bash -c "chown -R www-data:www-data /var/www/html/cache && apache2-foreground"
