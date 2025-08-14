@@ -6,11 +6,15 @@ class Fetcher {
     protected $channel;
     protected $cacheDir;
     protected $cacheTtl;
+    protected $maxPosts;
+    protected $swrMinInterval;
 
     public function __construct(array $config) {
         $this->channel  = $config['channel'];
         $this->cacheDir = $config['cache_dir'];
         $this->cacheTtl = $config['cache_ttl'];
+        $this->maxPosts = $config['max_posts_to_collect'] ?? 200;
+        $this->swrMinInterval = $config['swr_refresh_min_interval'] ?? 60;
 
         if (!is_dir($this->cacheDir)) {
             mkdir($this->cacheDir, 0755, true);
@@ -19,19 +23,85 @@ class Fetcher {
 
     public function getPosts() {
         $cacheFile = "$this->cacheDir/{$this->channel}.json";
+        // 命中未过期缓存直接返回
         if (file_exists($cacheFile) && time() - filemtime($cacheFile) < $this->cacheTtl) {
-            return json_decode(file_get_contents($cacheFile), true);
+            return json_decode(@file_get_contents($cacheFile) ?: '[]', true);
         }
 
+        // 过期缓存：SWR，先返回旧缓存，后台刷新
+        if (file_exists($cacheFile)) {
+            $stale = json_decode(@file_get_contents($cacheFile) ?: '[]', true);
+            $this->scheduleBackgroundRefresh($cacheFile);
+            return $stale ?: ['description' => '暂无简介', 'messages' => []];
+        }
+
+        // 没有缓存，则立即刷新（带超时与重试）
+        return $this->refreshNow($cacheFile);
+    }
+
+    protected function scheduleBackgroundRefresh(string $cacheFile): void {
+        $lock = $this->cacheDir . '/refresh_' . $this->channel . '.lock';
+        $now = time();
+        $canRefresh = true;
+        if (file_exists($lock)) {
+            $last = (int)@file_get_contents($lock);
+            if ($last && ($now - $last) < $this->swrMinInterval) {
+                $canRefresh = false;
+            }
+        }
+        if (!$canRefresh) return;
+        @file_put_contents($lock, (string)$now, LOCK_EX);
+
+        register_shutdown_function(function() use ($cacheFile, $lock) {
+            if (function_exists('fastcgi_finish_request')) {
+                @fastcgi_finish_request();
+            }
+            try {
+                $this->refreshNow($cacheFile);
+            } finally {
+                @file_put_contents($lock, (string)time(), LOCK_EX);
+            }
+        });
+    }
+
+    protected function httpGet(string $url, int $timeout = 8) {
+        $ctx = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'timeout' => $timeout,
+                'header' => "User-Agent: Mozilla/5.0 (Fetcher; +https://note.biggestsea.top)\r\nAccept: text/html,application/xhtml+xml\r\n",
+            ],
+            'ssl' => [
+                'verify_peer' => true,
+                'verify_peer_name' => true,
+            ],
+        ]);
+        return @file_get_contents($url, false, $ctx);
+    }
+
+    protected function httpGetWithRetry(string $url, int $retries = 2, int $timeout = 8) {
+        $attempt = 0;
+        $delay = 300; // ms 指数退避
+        while (true) {
+            $attempt++;
+            $res = $this->httpGet($url, $timeout);
+            if ($res !== false && $res !== '') return $res;
+            if ($attempt > $retries) return false;
+            usleep($delay * 1000);
+            $delay = min($delay * 2, 1500);
+        }
+    }
+
+    protected function refreshNow(string $cacheFile) {
         $allPosts = [];
         $processedMessageIds = [];
         $currentUrl = "https://t.me/s/{$this->channel}";
-        $description = '暂无简介'; // Default description
-        $maxPagesToFetch = 100; // Safety break for the loop
+        $description = '暂无简介';
+        $maxPagesToFetch = 50; // 安全上限
         $pagesFetched = 0;
 
-        // Fetch description from the first page
-        $initialHtmlContent = file_get_contents($currentUrl);
+        // 首次页面
+        $initialHtmlContent = $this->httpGetWithRetry($currentUrl, 2, 8);
         if ($initialHtmlContent === false || empty($initialHtmlContent)) {
             error_log("Fetcher: Failed to fetch initial page for channel {$this->channel} from URL: $currentUrl");
             return ['description' => $description, 'messages' => []];
@@ -54,10 +124,9 @@ class Fetcher {
 
         while ($currentUrl && $pagesFetched < $maxPagesToFetch) {
             $pagesFetched++;
-            // Use $initialHtmlContent for the first iteration, then fetch subsequent pages
-            $html = ($pagesFetched === 1) ? $initialHtmlContent : file_get_contents($currentUrl);
+            // 首次使用 initial，之后重试抓取
+            $html = ($pagesFetched === 1) ? $initialHtmlContent : $this->httpGetWithRetry($currentUrl, 2, 8);
             
-            // Clear $initialHtmlContent after its first use to ensure fresh fetches for subsequent pages
             if ($pagesFetched === 1) {
                 unset($initialHtmlContent);
             }
@@ -68,7 +137,6 @@ class Fetcher {
             }
 
             $dom = new DOMDocument();
-            // Use internal errors to avoid outputting HTML parsing errors
             libxml_use_internal_errors(true);
             if (!$dom->loadHTML($html)) {
                 error_log("Fetcher: Failed to parse HTML from $currentUrl for channel {$this->channel}");
@@ -81,7 +149,6 @@ class Fetcher {
             $messageNodes = $xpath->query('//div[contains(@class, "tgme_widget_message_wrap")]');
             
             if ($messageNodes->length === 0) {
-                // No more messages found on this page
                 break;
             }
 
@@ -157,31 +224,32 @@ class Fetcher {
                     $processedMessageIds[] = $messageData['id'];
                     $allPosts[] = $messageData; // Add the full pre-prepared message data
                     $newMessagesOnPage++;
-                    $lastProcessedMessageIdOnPage = $messageData['id']; // This will be the oldest ID in this batch
+                    $lastProcessedMessageIdOnPage = $messageData['id'];
+                    if (count($allPosts) >= $this->maxPosts) {
+                        $currentUrl = null;
+                        break;
+                    }
                 }
             }
 
-            if ($newMessagesOnPage === 0 && !empty($currentPageMessages)) { // Changed condition slightly
-                // Fetched a page, but all messages on it were already processed.
-                // This means we've reached the end of unique new content.
+            if ($newMessagesOnPage === 0 && !empty($currentPageMessages)) {
                 break;
             }
             
             if ($lastProcessedMessageIdOnPage !== null) {
                 $currentUrl = "https://t.me/s/{$this->channel}?before={$lastProcessedMessageIdOnPage}";
-                sleep(1); // Be polite to the server
+                usleep(300000); // 300ms 礼貌延迟
             } else {
-                // Could not determine the next page URL (e.g., no new messages found, or couldn't extract ID)
                 $currentUrl = null;
             }
         }
 
         $data = [
             'description' => $description,
-            'messages' => $allPosts // Keep the natural order: newest posts (first page) first
+            'messages' => $allPosts
         ];
 
-        file_put_contents($cacheFile, json_encode($data));
+        @file_put_contents($cacheFile, json_encode($data));
         return $data;
     }
 }
