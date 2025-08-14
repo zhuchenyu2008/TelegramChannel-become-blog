@@ -96,10 +96,18 @@ file_put_contents($statFile, $visits);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($page_title); ?></title>
     <link rel="stylesheet" href="assets/style.css">
+    <link rel="dns-prefetch" href="//t.me">
+    <link rel="preconnect" href="https://t.me" crossorigin>
+    <link rel="dns-prefetch" href="//cdn5.telesco.pe">
+    <link rel="preconnect" href="https://cdn5.telesco.pe" crossorigin>
+    <link rel="dns-prefetch" href="//jsonlink.io">
+    <link rel="preconnect" href="https://jsonlink.io" crossorigin>
+    <link rel="dns-prefetch" href="//www.google.com">
+    <link rel="preconnect" href="https://www.google.com" crossorigin>
 </head>
 <body>
 <div class="topbar">
-    <img src="https://t.me/i/userpic/320/<?php echo $channelName; ?>.jpg" alt="头像" class="avatar">
+    <img src="https://t.me/i/userpic/320/<?php echo $channelName; ?>.jpg" alt="头像" class="avatar" loading="lazy" decoding="async">
     <div class="channel-info">
         <a href="/" style="text-decoration: none; color: inherit;"><h1>@<?php echo htmlspecialchars($channelName); ?></h1></a>
         <p><?php echo htmlspecialchars($description); ?></p>
@@ -132,7 +140,7 @@ file_put_contents($statFile, $visits);
                 <?php if (!empty($post['imgs'])): ?>
                     <div class="image-gallery">
                         <?php foreach ($post['imgs'] as $idx => $img): ?>
-                            <img src="<?php echo htmlspecialchars($img); ?>" alt="" class="adaptive-img" data-idx="<?php echo $idx; ?>">
+                            <img src="<?php echo htmlspecialchars($img); ?>" alt="" class="adaptive-img" data-idx="<?php echo $idx; ?>" loading="lazy" decoding="async" referrerpolicy="no-referrer">
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
@@ -247,4 +255,9 @@ file_put_contents($statFile, $visits);
 <script src="assets/script.js"></script>
 </body>
 </html>
-
+<?php
+// 若存在后台刷新任务，确保尽快结束响应
+if (function_exists('fastcgi_finish_request')) {
+    @fastcgi_finish_request();
+}
+?>
