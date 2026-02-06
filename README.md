@@ -78,7 +78,7 @@ docker-compose up -d --build
 
    ```bash
    git clone https://github.com/你的用户名/你仓库名.git
-   cd 你仓库名
+   cd TelegramChannel-become-blog
    ```
 
 3. **配置**
