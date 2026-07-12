@@ -1,40 +1,8 @@
-// 标签点击行为 - 跳转到后端筛选
-document.querySelectorAll('.tag').forEach(tag => {
-    tag.addEventListener('click', e => {
-        e.preventDefault();
-        // Extract tag name from href (safer than textContent if there are other characters)
-        let tagName = '';
-        try {
-            const url = new URL(tag.href, window.location.origin);
-            tagName = url.searchParams.get('tag');
-        } catch (error) {
-            console.error("Error parsing tag href:", error);
-            // Fallback or alternative if href is not a full URL or doesn't have ?tag=
-            // For example, if href is just "#someTag" or textContent is "#someTag"
-            const text = tag.textContent.trim();
-            if (text.startsWith('#')) {
-                tagName = text.substring(1);
-            }
-        }
-
-        if (tagName) {
-            window.location.href = `index.php?tag=${encodeURIComponent(tagName)}`;
-        } else {
-            // Fallback to root if tag name couldn't be extracted (should not happen with current HTML)
-            window.location.href = 'index.php';
-        }
-    });
-});
-
-// Client-side filtering and back button logic previously here are now removed,
-// as filtering is handled by the backend and navigation is via direct links.
-
-// --- 生成链接预览框（可见时再加载，限制并发与超时） ---
+// 外链预览：进入视口后再加载，失败时保留可点击的域名卡片。
 (function(){
     const VISIBILITY_MARGIN = '200px';
     const MAX_CONCURRENCY = 2;
-    const FETCH_TIMEOUT = 4500; // ms
-
+    const FETCH_TIMEOUT = 4500;
     const tasks = [];
     let inflight = 0;
 
@@ -42,7 +10,10 @@ document.querySelectorAll('.tag').forEach(tag => {
         while (inflight < MAX_CONCURRENCY && tasks.length) {
             const fn = tasks.shift();
             inflight++;
-            Promise.resolve().then(fn).finally(()=>{ inflight--; runQueue(); });
+            Promise.resolve().then(fn).finally(() => {
+                inflight--;
+                runQueue();
+            });
         }
     }
 
@@ -56,8 +27,16 @@ document.querySelectorAll('.tag').forEach(tag => {
             return fetch(url, opts);
         }
         const ctl = new AbortController();
-        const id = setTimeout(()=>ctl.abort(), timeout);
-        return fetch(url, { ...opts, signal: ctl.signal }).finally(()=>clearTimeout(id));
+        const id = setTimeout(() => ctl.abort(), timeout);
+        return fetch(url, { ...opts, signal: ctl.signal }).finally(() => clearTimeout(id));
+    }
+
+    function hostnameOf(href){
+        try {
+            return new URL(href).hostname;
+        } catch (e) {
+            return href;
+        }
     }
 
     function ensurePreview(link){
@@ -71,10 +50,9 @@ document.querySelectorAll('.tag').forEach(tag => {
         preview.target = '_blank';
         preview.rel = 'noopener noreferrer';
 
-        // 构建骨架
         const img = document.createElement('img');
         img.className = 'link-preview-thumb';
-        img.alt = 'icon';
+        img.alt = '';
         img.loading = 'lazy';
         img.decoding = 'async';
         img.src = `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(link.href)}`;
@@ -83,13 +61,13 @@ document.querySelectorAll('.tag').forEach(tag => {
         contentDiv.className = 'link-preview-content';
         const titleDiv = document.createElement('div');
         titleDiv.className = 'link-preview-title';
-        titleDiv.textContent = link.href;
+        titleDiv.textContent = link.textContent.trim() || link.href;
         const descDiv = document.createElement('div');
         descDiv.className = 'link-preview-desc';
-        descDiv.textContent = '正在加载预览…';
+        descDiv.textContent = '正在读取链接摘要';
         const domainDiv = document.createElement('div');
         domainDiv.className = 'link-preview-domain';
-        try { domainDiv.textContent = (new URL(link.href)).hostname; } catch(e) { domainDiv.textContent = link.href; }
+        domainDiv.textContent = hostnameOf(link.href);
 
         contentDiv.appendChild(titleDiv);
         contentDiv.appendChild(descDiv);
@@ -103,12 +81,17 @@ document.querySelectorAll('.tag').forEach(tag => {
             .then(data => {
                 if (!preview.isConnected) return;
                 if (data.title) titleDiv.textContent = data.title;
-                descDiv.textContent = data.description ? data.description : '';
+                descDiv.textContent = data.description || '点击打开原链接';
                 if (data.images && data.images.length > 0) {
                     img.src = data.images[0];
                 }
             })
-            .catch(() => { if (preview.isConnected) { descDiv.textContent = ''; } })
+            .catch(() => {
+                if (preview.isConnected) {
+                    descDiv.textContent = '预览暂不可用，点击打开原链接';
+                    preview.classList.add('is-fallback');
+                }
+            })
         );
     }
 
@@ -124,14 +107,15 @@ document.querySelectorAll('.tag').forEach(tag => {
         }, { root: null, rootMargin: VISIBILITY_MARGIN, threshold: 0.01 });
         containerLinks.forEach(link => io.observe(link));
     } else {
-        // 兼容不支持 IO 的环境：一次性生成
         containerLinks.forEach(ensurePreview);
     }
 })();
-// --------- 图片灯箱和多图浏览 ----------
+
+// 图片灯箱：支持键盘、触摸滑动、相邻图片预加载。
 (function(){
-    // 灯箱元素
     const lightbox = document.getElementById('lightbox');
+    if (!lightbox) return;
+
     const lightboxImg = document.getElementById('lightbox-img');
     const lightboxClose = lightbox.querySelector('.lightbox-close');
     const lightboxPrev = lightbox.querySelector('.lightbox-prev');
@@ -140,74 +124,93 @@ document.querySelectorAll('.tag').forEach(tag => {
     const lightboxIndex = lightbox.querySelector('.lightbox-index');
     let currentSet = [];
     let currentIdx = 0;
+    let touchStartX = null;
 
-    // 所有帖子图片监听
     document.querySelectorAll('.image-gallery').forEach(gallery => {
         const imgs = Array.from(gallery.querySelectorAll('img'));
         imgs.forEach((img, idx) => {
-            img.addEventListener('click', function(e){
+            img.addEventListener('click', e => {
                 e.stopPropagation();
-                currentSet = imgs.map(i=>i.src);
+                currentSet = imgs.map(item => item.src);
                 currentIdx = idx;
                 showLightbox();
             });
         });
     });
 
+    function preloadNeighbors(){
+        [currentIdx - 1, currentIdx + 1].forEach(idx => {
+            if (currentSet[idx]) {
+                const img = new Image();
+                img.src = currentSet[idx];
+            }
+        });
+    }
+
     function showLightbox() {
         updateLightbox();
         lightbox.style.display = '';
-        setTimeout(()=>lightbox.classList.add('show'), 10);
+        lightbox.setAttribute('aria-hidden', 'false');
+        setTimeout(() => lightbox.classList.add('show'), 10);
         document.body.style.overflow = 'hidden';
     }
+
     function hideLightbox() {
         lightbox.classList.remove('show');
-        setTimeout(()=>{lightbox.style.display = 'none'; document.body.style.overflow='';}, 300);
+        lightbox.setAttribute('aria-hidden', 'true');
+        setTimeout(() => {
+            lightbox.style.display = 'none';
+            document.body.style.overflow = '';
+        }, 250);
     }
+
     function updateLightbox() {
+        if (!currentSet.length) return;
         lightboxImg.classList.remove('fade-in');
-        setTimeout(()=>{
+        setTimeout(() => {
             lightboxImg.src = currentSet[currentIdx];
             lightboxImg.classList.add('fade-in');
-            lightboxIndex.textContent = (currentIdx+1) + ' / ' + currentSet.length;
-
-            // Conditionally show/hide navigation arrows
-            if (currentSet.length <= 1) {
-                lightboxPrev.style.display = 'none';
-                lightboxNext.style.display = 'none';
-            } else {
-                if (currentIdx === 0) {
-                    lightboxPrev.style.display = 'none';
-                } else {
-                    lightboxPrev.style.display = 'flex';
-                }
-
-                if (currentIdx === currentSet.length - 1) {
-                    lightboxNext.style.display = 'none';
-                } else {
-                    lightboxNext.style.display = 'flex';
-                }
-            }
+            lightboxIndex.textContent = `${currentIdx + 1} / ${currentSet.length}`;
+            lightboxPrev.style.display = currentSet.length > 1 && currentIdx > 0 ? 'flex' : 'none';
+            lightboxNext.style.display = currentSet.length > 1 && currentIdx < currentSet.length - 1 ? 'flex' : 'none';
+            preloadNeighbors();
         }, 10);
     }
-    function prevImg(){
-        currentIdx = (currentIdx - 1 + currentSet.length) % currentSet.length;
-        updateLightbox();
-    }
-    function nextImg(){
-        currentIdx = (currentIdx + 1) % currentSet.length;
-        updateLightbox();
-    }
-    lightboxClose.onclick = hideLightbox;
-    lightboxBackdrop.onclick = hideLightbox;
-    lightboxPrev.onclick = prevImg;
-    lightboxNext.onclick = nextImg;
 
-    // 键盘支持
-    document.addEventListener('keydown', function(e){
-        if(lightbox.style.display === 'none') return;
-        if(e.key === 'Escape') hideLightbox();
-        if(e.key === 'ArrowLeft') prevImg();
-        if(e.key === 'ArrowRight') nextImg();
+    function prevImg(){
+        if (currentIdx <= 0) return;
+        currentIdx--;
+        updateLightbox();
+    }
+
+    function nextImg(){
+        if (currentIdx >= currentSet.length - 1) return;
+        currentIdx++;
+        updateLightbox();
+    }
+
+    lightboxClose.addEventListener('click', hideLightbox);
+    lightboxBackdrop.addEventListener('click', hideLightbox);
+    lightboxPrev.addEventListener('click', prevImg);
+    lightboxNext.addEventListener('click', nextImg);
+
+    lightbox.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    lightbox.addEventListener('touchend', e => {
+        if (touchStartX === null) return;
+        const diff = e.changedTouches[0].screenX - touchStartX;
+        if (Math.abs(diff) > 45) {
+            diff > 0 ? prevImg() : nextImg();
+        }
+        touchStartX = null;
+    }, { passive: true });
+
+    document.addEventListener('keydown', e => {
+        if (lightbox.style.display === 'none') return;
+        if (e.key === 'Escape') hideLightbox();
+        if (e.key === 'ArrowLeft') prevImg();
+        if (e.key === 'ArrowRight') nextImg();
     });
 })();
