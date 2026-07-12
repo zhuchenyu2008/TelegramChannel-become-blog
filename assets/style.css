@@ -213,7 +213,8 @@ a {
     order: 2;
 }
 
-.discover-panel section {
+.discover-panel section,
+.discover-panel details {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -222,9 +223,20 @@ a {
     box-shadow: var(--shadow);
 }
 
-.discover-panel h2 {
+.discover-panel h2,
+.discover-panel summary {
     font-size: 0.95rem;
+    font-weight: 700;
     margin: 0 0 10px;
+}
+
+.discover-panel summary {
+    cursor: default;
+    list-style: none;
+}
+
+.discover-panel summary::-webkit-details-marker {
+    display: none;
 }
 
 .tag-cloud {
@@ -644,7 +656,8 @@ a {
         gap: 12px;
     }
 
-    .discover-panel section {
+    .discover-panel section,
+    .discover-panel details {
         margin-bottom: 0;
     }
 }
@@ -695,6 +708,30 @@ a {
 
     .discover-panel {
         grid-template-columns: 1fr;
+    }
+
+    .archive-section summary {
+        align-items: center;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0;
+    }
+
+    .archive-section summary::after {
+        content: "+";
+        color: var(--muted);
+        font-size: 1.2rem;
+        font-weight: 500;
+        line-height: 1;
+    }
+
+    .archive-section[open] summary {
+        margin-bottom: 10px;
+    }
+
+    .archive-section[open] summary::after {
+        content: "-";
     }
 
     .image-gallery {

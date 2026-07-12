@@ -111,6 +111,28 @@
     }
 })();
 
+// 手机端默认收起时间归档，桌面端保持展开。
+(function(){
+    const archive = document.querySelector('.archive-section');
+    if (!archive || !window.matchMedia) return;
+
+    const media = window.matchMedia('(max-width: 640px)');
+    function syncArchiveState(event) {
+        if (event.matches) {
+            archive.removeAttribute('open');
+        } else {
+            archive.setAttribute('open', '');
+        }
+    }
+
+    syncArchiveState(media);
+    if (typeof media.addEventListener === 'function') {
+        media.addEventListener('change', syncArchiveState);
+    } else if (typeof media.addListener === 'function') {
+        media.addListener(syncArchiveState);
+    }
+})();
+
 // 图片灯箱：支持键盘、触摸滑动、相邻图片预加载。
 (function(){
     const lightbox = document.getElementById('lightbox');

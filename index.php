@@ -18,6 +18,12 @@ function post_plain_text($html) {
     return trim(html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 }
 
+function strip_urls_from_text($text) {
+    $text = preg_replace('#https?://\S+#i', '', (string)$text);
+    $text = preg_replace('#(?:^|\s)(?:www\.)?[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+(?:/\S*)?#iu', ' ', $text);
+    return trim(preg_replace('/\s+/u', ' ', $text));
+}
+
 function extract_tags_from_html($html) {
     preg_match_all('/#([\p{L}\p{N}_-]+)/u', (string)$html, $matches);
     $tags = $matches[1] ?? [];
@@ -83,6 +89,10 @@ $fetcher = new Fetcher($config);
 $data = $fetcher->getPosts();
 $all_posts = $data['messages'] ?? [];
 $description = $data['description'] ?? '暂无简介';
+$display_description = strip_urls_from_text($description);
+if ($display_description === '') {
+    $display_description = '暂无简介';
+}
 $channelName = $config['channel'];
 
 $tag_filter = isset($_GET['tag']) ? short_text(trim((string)$_GET['tag']), 60) : '';
@@ -170,7 +180,7 @@ file_put_contents($statFile, $visits);
         <img src="https://t.me/i/userpic/320/<?php echo e($channelName); ?>.jpg" alt="频道头像" class="avatar" loading="lazy" decoding="async">
         <div class="channel-info">
             <a href="index.php" class="channel-title"><h1>@<?php echo e($channelName); ?></h1></a>
-            <p><?php echo e($description); ?></p>
+            <p><?php echo e($display_description); ?></p>
         </div>
         <a class="telegram-button" href="https://t.me/<?php echo e($channelName); ?>" target="_blank" rel="noopener noreferrer">打开频道</a>
     </div>
@@ -206,15 +216,15 @@ file_put_contents($statFile, $visits);
                 <?php if (empty($tag_counts)): ?><p class="muted">暂无标签</p><?php endif; ?>
             </div>
         </section>
-        <section>
-            <h2>时间归档</h2>
+        <details class="archive-section" open>
+            <summary>时间归档</summary>
             <div class="archive-list">
                 <?php foreach (array_slice($archive_counts, 0, 12, true) as $month => $count): ?>
                     <a class="<?php echo $month === $month_filter ? 'active' : ''; ?>" href="<?php echo e(build_url(['month' => $month, 'page' => null])); ?>"><span><?php echo e($month); ?></span><strong><?php echo e($count); ?></strong></a>
                 <?php endforeach; ?>
                 <?php if (empty($archive_counts)): ?><p class="muted">暂无归档</p><?php endif; ?>
             </div>
-        </section>
+        </details>
     </aside>
 
     <section class="feed" aria-label="文章列表">
